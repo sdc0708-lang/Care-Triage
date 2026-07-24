@@ -1,0 +1,322 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>介護認定審査会 下読みトリアージ β版 β版 Ver.0.9.0</title>
+<style>
+:root{
+  --bg:#f4f7f6;--card:#fff;--text:#1f2933;--muted:#667085;--line:#d8e0dd;
+  --accent:#276b5d;--accent-soft:#e7f2ef;--yellow:#9a5b00;--yellow-bg:#fff5dd;
+  --red:#9c2f2f;--red-bg:#fff0ef;--green:#246b45;--green-bg:#edf8f1
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans JP",sans-serif}
+main{max-width:780px;margin:auto;padding:16px 14px 42px}
+.top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:10px}
+h1{font-size:20px;margin:0 0 4px}h2{font-size:17px;margin:0 0 10px}h3{font-size:15px;margin:14px 0 8px}
+.step,.muted{font-size:13px;color:var(--muted)}
+.progress{height:7px;background:#dfe7e4;border-radius:999px;overflow:hidden;margin-bottom:18px}.progress>div{height:100%;width:33%;background:var(--accent);transition:.2s}
+.card,.service,.result-card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:14px}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:9px}
+.choice input{position:absolute;opacity:0}
+.choice span{min-height:48px;display:flex;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:12px;background:#fff;text-align:center;padding:8px}
+.choice input:checked+span{border:2px solid var(--accent);background:var(--accent-soft);font-weight:700}
+.checkline{display:flex;gap:10px;align-items:flex-start;font-weight:600}.checkline input{width:21px;height:21px;flex:0 0 auto}
+.details{margin-top:12px}.details label{font-size:14px;display:block;margin-top:8px}
+select{width:100%;border:1px solid var(--line);border-radius:12px;padding:12px;background:#fff;margin-top:5px}
+button{font:inherit}.reset,.secondary{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 14px;color:var(--text)}
+.primary{width:100%;border:0;border-radius:14px;padding:14px;background:var(--accent);color:#fff;font-weight:700;margin-top:6px}.primary:disabled{opacity:.4}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}.hidden{display:none!important}
+.callout{border-radius:16px;padding:18px;border:1px solid var(--line);background:#fff;margin-bottom:14px}
+.callout.red{background:var(--red-bg);border-color:#e1b2ae}.callout.yellow{background:var(--yellow-bg);border-color:#e8c985}.callout.green{background:var(--green-bg);border-color:#b9dac6}
+.badge{display:inline-block;padding:5px 9px;border-radius:999px;color:#fff;font-size:12px;font-weight:800}.badge.red{background:var(--red)}.badge.yellow{background:var(--yellow)}.badge.green{background:var(--green)}
+.big{font-size:22px;font-weight:800;margin:7px 0}
+.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}.metric{background:#fff;border:1px solid var(--line);border-radius:14px;padding:13px}.metric b{display:block;font-size:17px;margin-top:4px}
+.impact{border-left:5px solid var(--yellow);background:var(--yellow-bg)}.money{font-size:25px;font-weight:800;color:#7a4900;margin:5px 0}
+.priority-list{display:grid;gap:9px}.priority-item{border-radius:13px;padding:12px 13px;border:1px solid var(--line);background:#fff}.priority-item.red{border-left:5px solid var(--red)}.priority-item.yellow{border-left:5px solid var(--yellow)}.priority-item.green{border-left:5px solid var(--green)}
+.question-list{padding-left:20px;margin:8px 0}.question-list li{margin:7px 0;line-height:1.45}
+.note{font-size:13px;color:var(--muted);border:1px solid var(--line);border-radius:13px;padding:13px;background:#fff}
+.memo-box{background:#fff;border:2px solid var(--accent);border-radius:16px;padding:16px;margin-bottom:14px}
+.memo-label{font-size:13px;color:var(--muted);font-weight:700}
+.memo-row{display:flex;gap:10px;align-items:center;margin-top:8px}
+.memo-text{flex:1;font-size:25px;font-weight:900;letter-spacing:.03em;line-height:1.35}
+.copy-btn{border:0;border-radius:12px;padding:11px 14px;background:var(--accent);color:#fff;font-weight:800;white-space:nowrap}
+.copy-status{font-size:12px;color:var(--green);margin-top:6px;min-height:1em}
+@media(min-width:600px){.grid{grid-template-columns:repeat(4,1fr)}}
+@media(max-width:480px){.metrics{grid-template-columns:1fr}.top{align-items:flex-start}}
+</style>
+</head>
+<body>
+<main>
+<div class="top">
+  <div><h1>介護認定審査会 下読みトリアージ</h1><div id="stepText" class="step">1 / 3　申請内容と前回認定</div></div>
+  <button class="reset" id="reset">最初から</button>
+</div>
+<div class="progress"><div id="bar"></div></div>
+
+<section id="s1">
+  <div class="card">
+    <h2>申請区分</h2>
+    <div id="applicationTypes" class="grid"></div>
+    <p class="muted">区分変更申請で一次判定が前回より低い場合は、最重要注意ケースとして判定します。</p>
+  </div>
+
+  <div class="card">
+    <h2>前回の認定区分</h2>
+    <div id="prevLevels" class="grid"></div>
+  </div>
+
+  <div class="card">
+    <h2>現在の生活場所</h2>
+    <div class="grid" id="places"></div>
+    <p class="muted">特定施設を選ぶと、区分低下時の報酬・支援体制への影響目安を表示します。</p>
+  </div>
+
+  <div>
+    <h2>現在利用しているサービス・支援</h2>
+    <p class="muted">最低限の下読み対象を拾うため、該当するものだけ選択してください。</p>
+    <div id="services"></div>
+  </div>
+
+  <button id="next" class="primary" disabled>今回の一次判定へ</button>
+</section>
+
+<section id="s2" class="hidden">
+  <div class="card">
+    <h2>今回のコンピュータ一次判定</h2>
+    <p class="muted">資料に記載された暫定区分を選択してください。</p>
+    <div id="nowLevels" class="grid"></div>
+  </div>
+  <div class="actions">
+    <button id="back" class="secondary">戻る</button>
+    <button id="judge" class="primary" disabled>トリアージ結果を表示</button>
+  </div>
+</section>
+
+<section id="s3" class="hidden" aria-live="polite">
+  <div class="memo-box">
+    <div class="memo-label">頭書き用・超短縮メモ</div>
+    <div class="memo-row">
+      <div id="shortMemo" class="memo-text">通常</div>
+      <button id="copyMemo" class="copy-btn" type="button">コピー</button>
+    </div>
+    <div id="copyStatus" class="copy-status"></div>
+  </div>
+
+  <div id="mainResult" class="callout"></div>
+
+  <div class="metrics">
+    <div class="metric"><span class="muted">申請区分</span><b id="aOut"></b></div>
+    <div class="metric"><span class="muted">前回認定</span><b id="pOut"></b></div>
+    <div class="metric"><span class="muted">今回一次判定</span><b id="nOut"></b></div>
+  </div>
+
+  <div class="result-card">
+    <h2>優先して見る理由</h2>
+    <div id="priorityReasons" class="priority-list"></div>
+  </div>
+
+  <div id="facilityImpact"></div>
+
+  <div class="result-card">
+    <h2>現在のサービス・生活への影響</h2>
+    <div id="serviceResults"></div>
+  </div>
+
+  <div class="result-card">
+    <h2>二次判定での議論の入口</h2>
+    <ul id="questions" class="question-list"></ul>
+  </div>
+
+  <div class="note">
+    このツールは全例を判定するものではなく、限られた下読み時間で、区分低下や区分変更申請など議論を要するケースを先に拾うためのトリアージ用です。最終判断は認定調査票、特記事項、主治医意見書および合議に基づいて行ってください。
+  </div>
+
+  <button id="again" class="primary">別のケースを確認する</button>
+</section>
+</main>
+
+<script>
+const levels=['要支援1','要支援2','要介護1','要介護2','要介護3','要介護4','要介護5'];
+const applicationTypes=[['renewal','更新申請'],['change','区分変更申請']];
+const unit={'要支援1':183,'要支援2':313,'要介護1':542,'要介護2':609,'要介護3':679,'要介護4':744,'要介護5':813};
+const places=[['home','在宅'],['tokutei','特定施設'],['otherFacility','その他の施設'],['other','その他']];
+const serviceDefs=[
+ ['day','デイサービス','freq'],['dayrehab','デイケア','freq'],['homehelp','訪問介護','freq'],['nurse','訪問看護','freq'],
+ ['rehab','訪問リハビリ','freq'],['short','ショートステイ','days'],['equipment','福祉用具貸与','equipment'],
+ ['smallmulti','小規模多機能','none'],['group','グループホーム','none'],['night','夜間の頻回対応','none'],
+ ['watch','継続的な見守り・声かけ','none'],['otherService','その他','none']
+];
+const freq=['週1回','週2回','週3回','週4回以上','月1～3回','月4～7回','月8回以上'];
+const days=['月1～2日','月3～5日','月6日以上'];
+const equipment=['手すり・歩行器・杖','車いす','特殊寝台','床ずれ防止用具','移動用リフト','その他'];
+let state={application:'',prev:'',now:'',place:'',services:{}};
+
+function choices(id,name,key,items){
+  const el=document.getElementById(id);
+  el.innerHTML=items.map(x=>{
+    const v=Array.isArray(x)?x[0]:x,l=Array.isArray(x)?x[1]:x;
+    return `<label class="choice"><input type="radio" name="${name}" value="${v}" ${state[key]===v?'checked':''}><span>${l}</span></label>`;
+  }).join('');
+  el.querySelectorAll('input').forEach(i=>i.onchange=()=>{state[key]=i.value;buttons()});
+}
+
+function renderServices(){
+  const el=document.getElementById('services');
+  el.innerHTML=serviceDefs.map(([id,label,type])=>{
+    const on=Object.prototype.hasOwnProperty.call(state.services,id);
+    let extra='';
+    if(on&&type==='freq') extra=`<div class="details"><label>利用頻度<select data-detail="${id}">${freq.map(v=>`<option ${state.services[id]===v?'selected':''}>${v}</option>`).join('')}</select></label></div>`;
+    if(on&&type==='days') extra=`<div class="details"><label>利用日数<select data-detail="${id}">${days.map(v=>`<option ${state.services[id]===v?'selected':''}>${v}</option>`).join('')}</select></label></div>`;
+    if(on&&type==='equipment'){
+      const arr=state.services[id]||[];
+      extra=`<div class="details">${equipment.map(v=>`<label class="checkline"><input type="checkbox" data-equip="${v}" ${arr.includes(v)?'checked':''}>${v}</label>`).join('')}</div>`;
+    }
+    return `<div class="service"><label class="checkline"><input type="checkbox" class="svc" data-id="${id}" ${on?'checked':''}>${label}</label>${extra}</div>`;
+  }).join('');
+
+  el.querySelectorAll('.svc').forEach(i=>i.onchange=()=>{
+    const d=serviceDefs.find(x=>x[0]===i.dataset.id);
+    if(i.checked) state.services[d[0]]=d[2]==='freq'?freq[0]:d[2]==='days'?days[0]:d[2]==='equipment'?[]:true;
+    else delete state.services[d[0]];
+    renderServices();buttons();
+  });
+  el.querySelectorAll('[data-detail]').forEach(s=>s.onchange=()=>state.services[s.dataset.detail]=s.value);
+  el.querySelectorAll('[data-equip]').forEach(i=>i.onchange=()=>{
+    let a=state.services.equipment||[];
+    state.services.equipment=i.checked?[...new Set([...a,i.dataset.equip])]:a.filter(x=>x!==i.dataset.equip);
+  });
+}
+
+function buttons(){
+  next.disabled=!state.application||!state.prev||!state.place||Object.keys(state.services).length===0;
+  judge.disabled=!state.now;
+}
+
+function go(n){
+  [s1,s2,s3].forEach((x,i)=>x.classList.toggle('hidden',i!==n-1));
+  stepText.textContent=n===1?'1 / 3　申請内容と前回認定':n===2?'2 / 3　今回の一次判定':'3 / 3　下読みトリアージ結果';
+  bar.style.width=n===1?'33%':n===2?'66%':'100%';
+}
+
+function resetAll(){
+  state={application:'',prev:'',now:'',place:'',services:{}};
+  choices('applicationTypes','application','application',applicationTypes);
+  choices('prevLevels','prev','prev',levels);
+  choices('nowLevels','now','now',levels);
+  choices('places','place','place',places);
+  renderServices();buttons();go(1);
+}
+
+function labelFor(id){return serviceDefs.find(x=>x[0]===id)?.[1]||id}
+
+function build(){
+  const pi=levels.indexOf(state.prev), ni=levels.indexOf(state.now);
+  const lower=ni<pi, same=ni===pi, higher=ni>pi;
+  const cross=state.prev.startsWith('要介護')&&state.now.startsWith('要支援');
+  const changeLower=state.application==='change'&&lower;
+  const changeSame=state.application==='change'&&same;
+
+  let severity='green', badge='通常確認', heading='優先度は高くありません';
+  let body='今回の一次判定は前回認定を下回っていません。通常の下読みで確認してください。';
+
+  if(changeLower){
+    severity='red';badge='最重要注意';heading='区分変更申請なのに一次判定が低下';
+    body='上位区分を求める区分変更申請であるにもかかわらず、一次判定は前回より低下しています。二次判定でそのまま低下確定とすることも難しく、区分変更却下を含む慎重な議論が必要になるケースです。';
+  }else if(cross){
+    severity='red';badge='重要注意';heading='要介護から要支援へ低下';
+    body='利用可能なサービスや支援体制への影響が大きいため、前回との差と一次判定の根拠を優先して確認してください。';
+  }else if(lower){
+    severity='yellow';badge='要確認';heading='更新認定で一次判定が低下';
+    body='前回認定より低下しています。本人の状態、現在の介護の手間、利用中サービスとの整合性を確認してください。';
+  }else if(changeSame){
+    severity='yellow';badge='要確認';heading='区分変更申請だが一次判定は据え置き';
+    body='区分変更申請の理由に対し、一次判定では前回と同区分です。変更を裏付ける特記事項や主治医意見書の根拠があるか確認してください。';
+  }
+
+  mainResult.className=`callout ${severity}`;
+  mainResult.innerHTML=`<span class="badge ${severity}">${badge}</span><div class="big">${heading}</div><p>${body}</p>`;
+
+  let memo='通常';
+  if(changeLower) memo='区変↓　却下？';
+  else if(cross) memo='介護→支援　？';
+  else if(lower) memo='更新↓　前回比？';
+  else if(changeSame) memo='区変→　根拠？';
+  if(state.place==='tokutei'&&lower) memo += '　施設？';
+  shortMemo.textContent=memo;
+  copyStatus.textContent='';
+
+  aOut.textContent=state.application==='change'?'区分変更申請':'更新申請';
+  pOut.textContent=state.prev;
+  nOut.textContent=state.now;
+
+  const reasons=[];
+  if(changeLower) reasons.push(['red','区分変更申請で前回より低い一次判定','区分変更却下を含め、結論の扱い自体が難しくなりやすいケースです。']);
+  if(cross) reasons.push(['red','要介護から要支援への移行','サービス利用や支援体制への影響が大きくなります。']);
+  else if(lower) reasons.push(['yellow','前回認定より一次判定が低下','更新ケースでも優先して差を確認する必要があります。']);
+  if(changeSame) reasons.push(['yellow','区分変更申請だが一次判定は据え置き','申請理由と一次判定の整合性を確認します。']);
+  if(state.place==='tokutei'&&lower) reasons.push(['yellow','特定施設での区分低下','施設報酬と支援継続への影響を参考情報として把握します。']);
+  if(!reasons.length) reasons.push(['green','大きなトリアージ所見なし','通常の順番で下読みして差し支えありません。']);
+
+  priorityReasons.innerHTML=reasons.map(r=>`<div class="priority-item ${r[0]}"><b>${r[1]}</b><div class="muted" style="margin-top:4px">${r[2]}</div></div>`).join('');
+
+  facilityImpact.innerHTML='';
+  if(state.place==='tokutei'&&lower&&unit[state.prev]!=null&&unit[state.now]!=null){
+    const diff=unit[state.prev]-unit[state.now], low=Math.round(diff*30*10/1000)*1000, high=Math.round(diff*31*11.4/1000)*1000;
+    facilityImpact.innerHTML=`<div class="result-card impact"><h2>特定施設の報酬・支援体制への影響目安</h2><p><b>${state.prev} → ${state.now}</b>　基本報酬差 ${diff}単位／日</p><div class="money">月 約${low.toLocaleString()}～${high.toLocaleString()}円減</div><p class="muted">30～31日、1単位10～11.4円で概算。基本報酬のみ。</p><p>減収自体を判定理由とするのではなく、区分低下が現在の人員配置や介助・見守りの継続に与える影響を理解したうえで、認定調査が実態を捉えているか議論するための情報です。</p></div>`;
+  }
+
+  serviceResults.innerHTML=Object.entries(state.services).map(([id,v])=>`
+    <p><b>${labelFor(id)}</b><br>
+    <span class="muted">${Array.isArray(v)?(v.join('、')||'品目未選択'):(v===true?'利用・対応あり':v)}</span><br>
+    ${lower?'一次判定低下後も現在と同じ支援が必要か、影響が大きいサービスかを確認してください。':'現在の利用状況と一次判定の整合性を確認してください。'}</p>`).join('');
+
+  let qs=[];
+  if(changeLower){
+    qs=[
+      '区分変更申請の理由と、一次判定が低下した理由を並べて確認する',
+      '区分変更を認める根拠があるか、特記事項と主治医意見書から確認する',
+      '低下確定ではなく、区分変更却下として扱うべきケースかを議論する',
+      '前回認定後に増えた介護の手間が、基本調査に反映されているか確認する'
+    ];
+  }else if(changeSame){
+    qs=[
+      '区分変更申請の理由を裏付ける具体的な介護の手間があるか',
+      '一次判定据え置きでも二次判定変更の根拠があるか',
+      '区分変更却下が妥当か、合議で確認する'
+    ];
+  }else if(lower){
+    qs=[
+      '前回認定から本当に介護の手間が減っているか',
+      '利用中サービスを継続できる区分か',
+      '前回との差を説明できる根拠が資料にあるか'
+    ];
+  }else{
+    qs=['大きな区分低下はないため、通常の下読み順で確認する'];
+  }
+  if(state.place==='tokutei'&&lower) qs.push('特定施設の支援体制への影響も踏まえ、区分低下の妥当性を確認する');
+  questions.innerHTML=qs.map(q=>`<li>${q}</li>`).join('');
+}
+
+next.onclick=()=>go(2);
+back.onclick=()=>go(1);
+judge.onclick=()=>{build();go(3)};
+copyMemo.onclick=async()=>{
+  const text=shortMemo.textContent;
+  try{
+    await navigator.clipboard.writeText(text);
+    copyStatus.textContent='コピーしました';
+  }catch(e){
+    const ta=document.createElement('textarea');
+    ta.value=text;document.body.appendChild(ta);ta.select();
+    document.execCommand('copy');ta.remove();
+    copyStatus.textContent='コピーしました';
+  }
+};
+again.onclick=resetAll;
+reset.onclick=resetAll;
+resetAll();
+</script>
+</body>
+</html>
